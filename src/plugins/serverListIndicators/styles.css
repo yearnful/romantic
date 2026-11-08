@@ -1,0 +1,7 @@
+.vc-indicators-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    gap: 4px;
+    box-sizing: border-box;
+}

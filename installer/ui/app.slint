@@ -1,0 +1,184 @@
+export struct Row {
+    name: string,
+    state: string,
+    version: string,
+    kind: int,
+    brand: int,
+}
+
+export struct LogLine {
+    text: string,
+    kind: int,
+}
+
+component Pill inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary: true;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 52px;
+    border-radius: 16px;
+    background: !root.enabled ? #1a1a1d : root.primary ? (touch.has-hover ? #c42346 : #a81d3b) : (touch.has-hover ? #2a2a30 : #1c1c20);
+    animate background { duration: 120ms; }
+    Text {
+        text: root.text;
+        color: !root.enabled ? #55555b : #ffffff;
+        font-size: 17px; font-weight: 700;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.default;
+        clicked => { root.clicked(); }
+    }
+}
+
+component Panel inherits Rectangle {
+    background: #14141a;
+    border-radius: 20px;
+    border-width: 1px;
+    border-color: #ffffff0d;
+}
+
+component Client inherits Rectangle {
+    in property <Row> item;
+    in property <bool> selected;
+    callback picked;
+    height: 84px;
+    border-radius: 18px;
+    background: root.selected ? #2a1520 : touch.has-hover ? #181820 : transparent;
+    border-width: root.selected ? 1px : 0px;
+    border-color: #e21d3c66;
+    animate background { duration: 120ms; }
+    HorizontalLayout {
+        padding-left: 18px; padding-right: 18px; spacing: 16px;
+        Image { source: root.item.brand == 2 ? @image-url("../assets/brand/canary.png") : root.item.brand == 1 ? @image-url("../assets/brand/ptb.png") : @image-url("../assets/brand/stable.png"); width: 48px; height: 48px; y: 18px; }
+        VerticalLayout {
+            alignment: center; spacing: 3px;
+            Text { text: root.item.name; color: #f2f2f4; font-size: 16px; font-weight: 700; }
+            Text { text: root.item.state; color: root.item.kind == 1 ? #ff6b81 : root.item.kind == 2 ? #e0a458 : #8a8a8f; font-size: 13px; }
+            Text { text: root.item.version; color: #55555b; font-size: 12px; }
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.picked(); }
+    }
+}
+
+export component App inherits Window {
+    in property <[Row]> rows;
+    in property <[LogLine]> log;
+    in property <string> imports: "";
+    in property <string> build: "";
+    in property <string> detail: "";
+    in property <bool> busy: false;
+    in-out property <int> selected: 0;
+    in-out property <bool> do-import: true;
+    callback install;
+    callback uninstall;
+    callback rescan;
+    callback selected-changed;
+    title: "romantic installer";
+    icon: @image-url("../assets/brand/romantic.png");
+    min-width: 940px; max-width: 940px; min-height: 640px; max-height: 640px;
+    background: #08080b;
+    default-font-family: "Segoe UI";
+
+    Rectangle {
+        y: 0px; height: 4px;
+        background: @linear-gradient(90deg, #7a1230 0%, #e21d3c 55%, #ff6b81 100%);
+    }
+
+    HorizontalLayout {
+        padding: 28px; padding-top: 32px; spacing: 24px;
+        VerticalLayout {
+            width: 340px; spacing: 18px;
+            HorizontalLayout {
+                spacing: 14px; alignment: start;
+                Image { source: @image-url("../assets/brand/romantic.png"); width: 56px; height: 56px; image-rendering: pixelated; }
+                VerticalLayout {
+                    alignment: center;
+                    Text { text: "romantic"; color: #ffffff; font-size: 32px; font-weight: 800; }
+                    Text { text: "Discord, but in love."; color: #8a8a8f; font-size: 13px; }
+                }
+            }
+            Panel {
+                VerticalLayout {
+                    padding: 14px; spacing: 6px; alignment: start;
+                    Text { text: "DISCORD CLIENTS"; color: #55555b; font-size: 11px; font-weight: 700; }
+                    if root.rows.length == 0: Text {
+                        text: "No Discord found. Install Discord, open it once, then press Rescan.";
+                        color: #8a8a8f; font-size: 13px; wrap: word-wrap;
+                    }
+                    for r[index] in root.rows: Client {
+                        item: r; selected: index == root.selected;
+                        picked => { root.selected = index; root.selected-changed(); }
+                    }
+                }
+            }
+        }
+        VerticalLayout {
+            spacing: 16px;
+            Panel {
+                height: 118px;
+                HorizontalLayout {
+                    padding: 22px; spacing: 18px;
+                    Image { source: @image-url("../assets/brand/romantic.png"); width: 72px; height: 72px; image-rendering: pixelated; }
+                    VerticalLayout {
+                        alignment: center; spacing: 4px;
+                        Text { text: "romantic " + root.build; color: #ffffff; font-size: 18px; font-weight: 800; }
+                        Text { text: "Every plugin in one client. Risky ones ask before they turn on."; color: #8a8a8f; font-size: 13px; wrap: word-wrap; }
+                        Text { text: "GPL-3.0, free and open source"; color: #55555b; font-size: 12px; }
+                    }
+                }
+            }
+            Panel {
+                height: 110px;
+                VerticalLayout {
+                    padding: 22px; spacing: 5px; alignment: center;
+                    Text { text: "SELECTED"; color: #55555b; font-size: 11px; font-weight: 700; }
+                    Text { text: root.detail; color: #d8d8dc; font-size: 14px; wrap: word-wrap; }
+                }
+            }
+            Panel {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    padding: 18px; spacing: 4px; alignment: start;
+                    Text { text: "LOG"; color: #55555b; font-size: 11px; font-weight: 700; }
+                    for l in root.log: Text {
+                        text: l.text; font-size: 13px; wrap: word-wrap;
+                        color: l.kind == 1 ? #7be08a : l.kind == 2 ? #ff5f6d : #d8d8dc;
+                    }
+                }
+            }
+            if root.imports != "": Rectangle {
+                height: 40px; border-radius: 12px; background: #14141a;
+                HorizontalLayout {
+                    padding-left: 14px; padding-right: 14px; spacing: 10px;
+                    Rectangle {
+                        width: 20px; height: 20px; y: 10px; border-radius: 6px;
+                        background: root.do-import ? #e21d3c : #26262b;
+                        Text { text: root.do-import ? "✓" : ""; color: #ffffff; font-size: 13px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                    Text { text: root.imports; color: #d8d8dc; font-size: 13px; vertical-alignment: center; }
+                }
+                TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { root.do-import = !root.do-import; } }
+            }
+            HorizontalLayout {
+                spacing: 12px; height: 52px;
+                Pill {
+                    horizontal-stretch: 2; enabled: !root.busy && root.rows.length > 0;
+                    text: root.rows.length == 0 ? "Install" : root.rows[root.selected].kind == 1 ? "Repair" : root.rows[root.selected].kind == 2 ? "Replace with romantic" : "Install";
+                    clicked => { root.install(); }
+                }
+                Pill {
+                    horizontal-stretch: 1; primary: false; text: "Uninstall";
+                    enabled: !root.busy && root.rows.length > 0 && root.rows[root.selected].kind != 0;
+                    clicked => { root.uninstall(); }
+                }
+                Pill { horizontal-stretch: 1; primary: false; text: "Rescan"; clicked => { root.rescan(); } }
+            }
+        }
+    }
+}
